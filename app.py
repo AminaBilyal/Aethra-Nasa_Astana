@@ -16,10 +16,43 @@ from sklearn.metrics import mean_absolute_error
 
 # ---------- Page setup ----------
 st.set_page_config(page_title="NASA Hackathon: Healthy Cities", layout="wide")
-st.markdown("<h1 style='text-align: center; color: white;'>NASA Hackathon: Healthy Cities</h1>", unsafe_allow_html=True)
+
+# ---------- CSS for black background and custom styles ----------
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #000000;
+        color: white;
+    }
+    .sidebar .sidebar-content {
+        background-color: #111111;
+        color: white;
+    }
+    .stButton>button {
+        background-color: #0b3d91;
+        color: white;
+    }
+    .stMarkdown h1, .stMarkdown h3 {
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True
+)
+
+# ---------- NASA Logo ----------
+st.markdown(
+    """
+    <div style="text-align:center;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg" width="200">
+    </div>
+    """, unsafe_allow_html=True
+)
+
+# ---------- Title ----------
+st.markdown("<h1 style='text-align: center;'>NASA Hackathon: Healthy Cities</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: lightgray;'>Environmental Monitoring Dashboard | Amina Bilyalova</h3>", unsafe_allow_html=True)
 st.markdown("<hr style='border:1px solid white'>", unsafe_allow_html=True)
-st.markdown('<style>body{background-color:black; color:white;} .sidebar .sidebar-content {background-color:#111;}</style>', unsafe_allow_html=True)
 
 # ---------- Month dictionary ----------
 month_dict = {
@@ -108,30 +141,35 @@ st.write(f"Random Forest MAE: {mae:.2f} µg/m³")
 # ---------- Graphs ----------
 st.subheader("Data Visualizations")
 fig, axes = plt.subplots(2,2, figsize=(15,10))
+fig.patch.set_facecolor('black')
 
 # PM2.5 bar
 pm25_avg = df_filtered.groupby('district')['pm25'].mean()
 axes[0,0].bar(pm25_avg.index, pm25_avg.values, color=['green','orange','red','yellow','purple'][:len(pm25_avg)])
-axes[0,0].set_title("Average PM2.5 by District")
-axes[0,0].set_ylabel("PM2.5 µg/m³")
+axes[0,0].set_title("Average PM2.5 by District", color='white')
+axes[0,0].set_ylabel("PM2.5 µg/m³", color='white')
+axes[0,0].tick_params(colors='white')
 
 # Green spaces vs PM2.5
-sns.scatterplot(data=df_filtered, x='green_spaces', y='pm25', hue='district', s=100, ax=axes[0,1])
-axes[0,1].set_title("Green Spaces vs PM2.5")
-axes[0,1].set_ylabel("PM2.5 µg/m³")
+sns.scatterplot(data=df_filtered, x='green_spaces', y='pm25', hue='district', s=100, ax=axes[0,1'])
+axes[0,1].set_title("Green Spaces vs PM2.5", color='white')
+axes[0,1].set_ylabel("PM2.5 µg/m³", color='white')
+axes[0,1].tick_params(colors='white')
 
 # Seasonal PM2.5
 monthly_pm = df_filtered.groupby('month')['pm25'].mean()
 axes[1,0].plot(monthly_pm.index, monthly_pm.values, marker='o', color='cyan')
 axes[1,0].set_xticks(range(1,13))
-axes[1,0].set_title("Seasonal PM2.5 Trend")
-axes[1,0].set_xlabel("Month")
-axes[1,0].set_ylabel("PM2.5 µg/m³")
+axes[1,0].set_title("Seasonal PM2.5 Trend", color='white')
+axes[1,0].set_xlabel("Month", color='white')
+axes[1,0].set_ylabel("PM2.5 µg/m³", color='white')
+axes[1,0].tick_params(colors='white')
 
 # Feature importance
 feat_import = pd.DataFrame({'feature': features, 'importance': model.feature_importances_}).sort_values('importance', ascending=True)
 axes[1,1].barh(feat_import['feature'], feat_import['importance'], color='lightblue')
-axes[1,1].set_title("Feature Importance for PM2.5 Prediction")
+axes[1,1].set_title("Feature Importance for PM2.5 Prediction", color='white')
+axes[1,1].tick_params(colors='white')
 
 plt.tight_layout()
 st.pyplot(fig)

@@ -10,7 +10,6 @@ from streamlit_folium import st_folium
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
-import joblib
 
 st.set_page_config(
     page_title="NASA Hackathon Project",
@@ -95,22 +94,34 @@ df = create_astana_data()
 
 # --- SIDEBAR FILTERS ---
 st.sidebar.header("Filters")
-selected_district = st.sidebar.selectbox("Select district:", options=df['district'].unique())
 selected_month = st.sidebar.slider("Select month:", 1, 12, 1)
+selected_pm_levels = st.sidebar.multiselect(
+    "Select pollution levels to display:",
+    ["Low (<15)", "Moderate (15-25)", "High (>25)"],
+    default=["Low (<15)", "Moderate (15-25)", "High (>25)"]
+)
 
-filtered_df = df[(df['district']==selected_district) & (df['month']==selected_month)]
+filtered_df = df[df['month']==selected_month]
 
 # --- INTERACTIVE MAP ---
-st.subheader("Astana Pollution Map")
+st.subheader(f"Astana Pollution Map: Month {selected_month}")
+
 m = folium.Map(location=[51.1694, 71.4491], zoom_start=11, tiles="CartoDB dark_matter")
 
-# Add heatmap
-heat_data = [[row['latitude'], row['longitude'], row['pm25']] for index, row in filtered_df.iterrows()]
+# Add heatmap for all points
+heat_data = [[row['latitude'], row['longitude'], row['pm25']] for index,row in filtered_df.iterrows()]
 HeatMap(heat_data, min_opacity=0.5, radius=25, blur=15, max_val=50).add_to(m)
 
-# Add CircleMarkers for district pollution
-for index, row in filtered_df.iterrows():
-    color = "green" if row['pm25']<15 else "orange" if row['pm25']<25 else "red"
+# CircleMarkers by pollution levels
+for index,row in filtered_df.iterrows():
+    if row['pm25']<15 and "Low (<15)" in selected_pm_levels:
+        color = "green"
+    elif 15<=row['pm25']<=25 and "Moderate (15-25)" in selected_pm_levels:
+        color = "orange"
+    elif row['pm25']>25 and "High (>25)" in selected_pm_levels:
+        color = "red"
+    else:
+        continue
     folium.CircleMarker(
         location=[row['latitude'], row['longitude']],
         radius=8,
@@ -148,14 +159,12 @@ st.pyplot(fig)
 st.subheader("Pollution & Green Spaces Analysis")
 fig2, axes = plt.subplots(1,2, figsize=(12,4))
 
-# Avg PM2.5 by district
 pm25_means = df.groupby('district')['pm25'].mean().sort_values(ascending=False)
 axes[0].bar(pm25_means.index, pm25_means.values, color='orange')
 axes[0].set_title("Average PM2.5 by District")
 axes[0].set_ylabel("PM2.5 µg/m³")
 axes[0].tick_params(axis='x', rotation=45)
 
-# Green spaces vs PM2.5
 green_pm25 = df.groupby('district').agg({'green_spaces':'first','pm25':'mean'})
 axes[1].scatter(green_pm25['green_spaces'], green_pm25['pm25'], color='lime', s=100)
 for i,row in green_pm25.iterrows():
@@ -175,5 +184,4 @@ st.markdown(f"**Cleanest district:** {best} → Study and replicate successful s
 top_parks = df.groupby('district')['park_need_index'].mean().sort_values(ascending=False)
 st.markdown(f"**Immediate Park Development Needed:** {top_parks.index[0]}, {top_parks.index[1]}")
 
-st.success("🚀 Demo ready! Interactive map, ML model, and analysis fully integrated.")
-
+st.success("🚀 Interactive demo ready! All zones and months selectable, ML model and map integrated.")

@@ -1,196 +1,173 @@
-# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
+import folium
+from streamlit_folium import st_folium
+from folium.plugins import HeatMap
 import matplotlib.pyplot as plt
 import seaborn as sns
-import folium
-from folium.plugins import HeatMap
-from streamlit_folium import st_folium
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
+import joblib
 
+# -----------------------------
+# PAGE CONFIG
 st.set_page_config(
-    page_title="NASA Hackathon Project",
+    page_title="NASA Hackathon: Astana Project",
     layout="wide",
-    page_icon="🚀",
+    initial_sidebar_state="expanded"
 )
+st.markdown("<h1 style='text-align: center; color: white;'>NASA Hackathon: Healthy Cities</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: #f0f0f0;'>By Amina Bilyalova</h4>", unsafe_allow_html=True)
+st.markdown("---")
 
-# --- HEADER ---
-st.markdown(
-    """
-    <div style="display:flex; align-items:center; gap:10px;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg" width="80">
-        <h1 style="color:white;">NASA Hackathon: Data Pathways to Healthy Cities</h1>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-st.markdown("---", unsafe_allow_html=True)
-
-# --- DARK THEME ---
-st.markdown(
-    """
-    <style>
-    .main {background-color: #0c0c0c; color: white;}
-    .stButton>button {background-color: #1a1a1a; color: white;}
-    .stSelectbox>div>div {background-color: #1a1a1a; color: white;}
-    .stSlider>div>div {background-color: #1a1a1a; color: white;}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# --- LOAD OR CREATE DATA ---
+# -----------------------------
+# LOAD DATA
 @st.cache_data
-def create_astana_data():
-    districts = {
-        'Almaty': {'lat': 51.15, 'lon': 71.45, 'population': 350000, 'green_spaces': 12},
-        'Saryarka': {'lat': 51.20, 'lon': 71.40, 'population': 280000, 'green_spaces': 8},
-        'Yesil': {'lat': 51.18, 'lon': 71.35, 'population': 320000, 'green_spaces': 15},
-        'Nura': {'lat': 51.12, 'lon': 71.50, 'population': 190000, 'green_spaces': 10},
-        'Baikonur': {'lat': 51.22, 'lon': 71.48, 'population': 150000, 'green_spaces': 9}
-    }
-    all_data = []
-    dates = pd.date_range('2023-01-01', '2023-12-31', freq='D')
-    for district, info in districts.items():
-        for i, date in enumerate(dates):
-            base_temp = 5 + 25 * np.sin(2 * np.pi * i / 365)
-            if district == 'Saryarka':
-                temp = base_temp + np.random.normal(2,1.5)
-                pm25 = np.random.normal(28,6)
-                traffic = np.random.normal(80000,10000)
-            elif district == 'Almaty':
-                temp = base_temp + np.random.normal(1,2)
-                pm25 = np.random.normal(22,5)
-                traffic = np.random.normal(95000,15000)
-            elif district == 'Yesil':
-                temp = base_temp + np.random.normal(-1,1)
-                pm25 = np.random.normal(15,3)
-                traffic = np.random.normal(60000,8000)
-            else:
-                temp = base_temp + np.random.normal(0,1.5)
-                pm25 = np.random.normal(20,4)
-                traffic = np.random.normal(50000,7000)
-            humidity = 60 + 20*np.sin(2*np.pi*i/365 + np.pi/2) + np.random.normal(0,5)
-            park_need = max(0, (pm25 - 10) * info['population']/10000)
-            all_data.append({
-                'date': date,
-                'district': district,
-                'temperature': round(temp,1),
-                'humidity': max(30,min(95,round(humidity,1))),
-                'pm25': max(5,round(pm25,1)),
-                'population': info['population'],
-                'green_spaces': info['green_spaces'],
-                'traffic_volume': max(10000, traffic),
-                'park_need_index': round(park_need,1),
-                'latitude': info['lat'],
-                'longitude': info['lon'],
-                'month': date.month
-            })
-    return pd.DataFrame(all_data)
+def load_data():
+    try:
+        df = pd.read_csv("astana_analysis.csv")
+    except:
+        # If CSV not found, create sample data
+        def create_astana_data():
+            districts = {
+                'Almaty': {'lat': 51.15, 'lon': 71.45, 'population': 350000, 'green_spaces': 12},
+                'Saryarka': {'lat': 51.20, 'lon': 71.40, 'population': 280000, 'green_spaces': 8},
+                'Yesil': {'lat': 51.18, 'lon': 71.35, 'population': 320000, 'green_spaces': 15},
+                'Nura': {'lat': 51.12, 'lon': 71.50, 'population': 190000, 'green_spaces': 10},
+                'Baikonur': {'lat': 51.22, 'lon': 71.48, 'population': 150000, 'green_spaces': 9}
+            }
+            all_data = []
+            dates = pd.date_range('2023-01-01', '2023-12-31', freq='D')
+            for district, info in districts.items():
+                for i, date in enumerate(dates):
+                    base_temp = 5 + 25 * np.sin(2 * np.pi * i / 365)
+                    if district == 'Saryarka':
+                        temp = base_temp + np.random.normal(2,1.5)
+                        pm25 = np.random.normal(28,6)
+                        traffic = np.random.normal(80000,10000)
+                    elif district == 'Almaty':
+                        temp = base_temp + np.random.normal(1,2)
+                        pm25 = np.random.normal(22,5)
+                        traffic = np.random.normal(95000,15000)
+                    elif district == 'Yesil':
+                        temp = base_temp + np.random.normal(-1,1)
+                        pm25 = np.random.normal(15,3)
+                        traffic = np.random.normal(60000,8000)
+                    else:
+                        temp = base_temp + np.random.normal(0,1.5)
+                        pm25 = np.random.normal(20,4)
+                        traffic = np.random.normal(50000,7000)
+                    humidity = 60 + 20 * np.sin(2 * np.pi * i / 365 + np.pi/2) + np.random.normal(0,5)
+                    park_need = max(0, (pm25-10)*info['population']/10000)
+                    all_data.append({
+                        'date': date,
+                        'district': district,
+                        'temperature': round(temp,1),
+                        'humidity': max(30,min(95,round(humidity,1))),
+                        'pm25': max(5,round(pm25,1)),
+                        'population': info['population'],
+                        'green_spaces': info['green_spaces'],
+                        'traffic_volume': max(10000,traffic),
+                        'park_need_index': round(park_need,1),
+                        'latitude': info['lat'],
+                        'longitude': info['lon']
+                    })
+            return pd.DataFrame(all_data)
+        df = create_astana_data()
+    df['month'] = pd.to_datetime(df['date']).dt.month
+    df['month_name'] = pd.to_datetime(df['date']).dt.strftime('%B')
+    return df
 
-df = create_astana_data()
+df = load_data()
 
-# --- SIDEBAR FILTERS ---
+# -----------------------------
+# SIDEBAR FILTERS
 st.sidebar.header("Filters")
-month_names = ["January","February","March","April","May","June","July","August","September","October","November","December"]
-selected_month_index = st.sidebar.slider("Select month:", 1, 12, 1)
-selected_month = month_names[selected_month_index-1]
+districts = df['district'].unique().tolist()
+selected_districts = st.sidebar.multiselect("Select district(s):", districts, default=districts)
+months = df['month_name'].unique().tolist()
+selected_months = st.sidebar.multiselect("Select month(s):", months, default=months)
+pm_levels = st.sidebar.multiselect("Select PM2.5 levels:",
+                                   ["Low (<15)","Moderate (15-25)","High (>25)"],
+                                   default=["Low (<15)","Moderate (15-25)","High (>25)"])
 
-district_options = ["All"] + list(df['district'].unique())
-selected_district = st.sidebar.selectbox("Select district:", district_options)
+df_filtered = df[(df['district'].isin(selected_districts)) & (df['month_name'].isin(selected_months))]
 
-selected_pm_levels = st.sidebar.multiselect(
-    "Select pollution levels to display:",
-    ["Low (<15)", "Moderate (15-25)", "High (>25)"],
-    default=["Low (<15)", "Moderate (15-25)", "High (>25)"]
-)
+# -----------------------------
+# KPI PANEL
+st.subheader("Key Environmental Indicators")
+col1, col2, col3 = st.columns(3)
+col1.metric("Average PM2.5", f"{df_filtered['pm25'].mean():.1f}")
+col2.metric("Most Polluted District", df_filtered.groupby('district')['pm25'].mean().idxmax())
+col3.metric("Cleanest District", df_filtered.groupby('district')['pm25'].mean().idxmin())
 
-filtered_df = df[df['month']==selected_month_index]
-if selected_district != "All":
-    filtered_df = filtered_df[filtered_df['district']==selected_district]
-
-# --- INTERACTIVE MAP ---
-st.subheader(f"Astana Pollution Map: {selected_month} {'' if selected_district=='All' else '- '+selected_district}")
-
+# -----------------------------
+# MAP
+st.subheader("Interactive Pollution Map (Astana)")
 m = folium.Map(location=[51.1694, 71.4491], zoom_start=11, tiles="CartoDB dark_matter")
+heat_data = df_filtered[['latitude','longitude','pm25']].values.tolist()
+HeatMap(heat_data, min_opacity=0.3, radius=15, blur=10, max_val=50).add_to(m)
 
-# HeatMap
-heat_data = [[row['latitude'], row['longitude'], row['pm25']] for index,row in filtered_df.iterrows()]
-HeatMap(heat_data, min_opacity=0.5, radius=25, blur=15, max_val=50).add_to(m)
-
-# CircleMarkers
-for index,row in filtered_df.iterrows():
-    if row['pm25']<15 and "Low (<15)" in selected_pm_levels:
+# Circle markers with colors
+for _, row in df_filtered.iterrows():
+    if row['pm25']<15 and "Low (<15)" in pm_levels:
         color = "green"
-    elif 15<=row['pm25']<=25 and "Moderate (15-25)" in selected_pm_levels:
+    elif 15<=row['pm25']<=25 and "Moderate (15-25)" in pm_levels:
         color = "orange"
-    elif row['pm25']>25 and "High (>25)" in selected_pm_levels:
+    elif row['pm25']>25 and "High (>25)" in pm_levels:
         color = "red"
     else:
         continue
     folium.CircleMarker(
         location=[row['latitude'], row['longitude']],
-        radius=8,
+        radius=12,
         color=color,
         fill=True,
-        fill_opacity=0.7,
-        popup=f"{row['district']} PM2.5: {row['pm25']}"
+        fill_opacity=0.8,
+        popup=f"{row['district']} - {row['pm25']} µg/m³"
     ).add_to(m)
 
-st_data = st_folium(m, width=800, height=500)
+st_folium(m, width=900, height=600)
 
-# --- ML MODEL ---
-st.subheader("ML Model: PM2.5 Prediction")
-features = ['temperature', 'humidity', 'population', 'green_spaces', 'traffic_volume', 'month']
+# -----------------------------
+# PLOTS
+st.subheader("Air Quality & Green Spaces Analytics")
+fig, axes = plt.subplots(2,2,figsize=(15,10))
+sns.barplot(data=df_filtered.groupby('district')['pm25'].mean().reset_index(), x='district', y='pm25', ax=axes[0,0], palette="Reds")
+axes[0,0].set_title("Average PM2.5 by District")
+axes[0,0].set_ylabel("PM2.5")
+sns.scatterplot(data=df_filtered.groupby('district').agg({'green_spaces':'first','pm25':'mean'}).reset_index(),
+                x='green_spaces', y='pm25', hue='district', s=100, ax=axes[0,1])
+axes[0,1].set_title("Green Spaces vs PM2.5")
+monthly_pm25 = df_filtered.groupby('month')['pm25'].mean().reset_index()
+sns.lineplot(data=monthly_pm25, x='month', y='pm25', marker='o', ax=axes[1,0])
+axes[1,0].set_xticks(range(1,13))
+axes[1,0].set_title("Seasonal PM2.5 Patterns")
+sns.boxplot(data=df_filtered, x='district', y='humidity', ax=axes[1,1], palette="Blues")
+axes[1,1].set_title("Humidity by District")
+plt.tight_layout()
+st.pyplot(fig)
+
+# -----------------------------
+# MACHINE LEARNING
+st.subheader("PM2.5 Prediction Model (Random Forest)")
+features = ['temperature','humidity','population','green_spaces','traffic_volume','month']
 X = df[features]
 y = df['pm25']
-
-X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42)
 model = RandomForestRegressor(n_estimators=50, max_depth=10, n_jobs=-1, random_state=42)
 model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 mae = mean_absolute_error(y_test, y_pred)
+st.markdown(f"**Random Forest MAE:** {mae:.2f} µg/m³")
 
-st.write(f"Model Mean Absolute Error: {mae:.2f} µg/m³")
-
-# Feature importance plot
-st.subheader("Feature Importance")
-importances = pd.DataFrame({'feature': features, 'importance': model.feature_importances_}).sort_values('importance', ascending=True)
-fig, ax = plt.subplots(figsize=(6,4))
-ax.barh(importances['feature'], importances['importance'], color='cyan')
-ax.set_title("Feature Importance for PM2.5 Prediction")
-st.pyplot(fig)
-
-# --- ADDITIONAL GRAPHS ---
-st.subheader("Pollution & Green Spaces Analysis")
-fig2, axes = plt.subplots(1,2, figsize=(12,4))
-
-pm25_means = df.groupby('district')['pm25'].mean().sort_values(ascending=False)
-axes[0].bar(pm25_means.index, pm25_means.values, color='orange')
-axes[0].set_title("Average PM2.5 by District")
-axes[0].set_ylabel("PM2.5 µg/m³")
-axes[0].tick_params(axis='x', rotation=45)
-
-green_pm25 = df.groupby('district').agg({'green_spaces':'first','pm25':'mean'})
-axes[1].scatter(green_pm25['green_spaces'], green_pm25['pm25'], color='lime', s=100)
-for i,row in green_pm25.iterrows():
-    axes[1].annotate(i, (row['green_spaces'], row['pm25']))
-axes[1].set_xlabel("Green Spaces (km²)")
-axes[1].set_ylabel("PM2.5")
-axes[1].set_title("Green Spaces vs PM2.5")
-
+feat_imp = pd.DataFrame({'feature':features,'importance':model.feature_importances_}).sort_values('importance',ascending=True)
+fig2, ax2 = plt.subplots()
+ax2.barh(feat_imp['feature'], feat_imp['importance'], color="skyblue")
+ax2.set_title("Feature Importance for PM2.5 Prediction")
 st.pyplot(fig2)
 
-# --- RECOMMENDATIONS ---
-st.subheader("Urban Planning Recommendations")
-worst = df.groupby('district')['pm25'].mean().idxmax()
-best = df.groupby('district')['pm25'].mean().idxmin()
-st.markdown(f"**Most polluted district:** {worst} → Actions: Air quality monitoring, Green infrastructure, Traffic management")
-st.markdown(f"**Cleanest district:** {best} → Study and replicate successful strategies")
-top_parks = df.groupby('district')['park_need_index'].mean().sort_values(ascending=False)
-st.markdown(f"**Immediate Park Development Needed:** {top_parks.index[0]}, {top_parks.index[1]}")
-
-st.success("🚀 Interactive demo ready! All zones, months, and districts selectable, ML model and map integrated.")
+st.markdown("---")
+st.markdown("<p style='text-align:center; color: gray;'>Interactive demo for NASA Hackathon 2025 – Amina Bilyalova</p>", unsafe_allow_html=True)

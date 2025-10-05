@@ -145,6 +145,6 @@ st.markdown(f"""
 - **High Risk Days:** {df[df['pm25']>25].groupby('district').size().to_dict()}  
 - **Immediate Park Development:** {df.groupby('district')['pm25'].mean().sort_values(ascending=False).index[:2].tolist()}  
 """)
-st.markdown("**Team:** Amina Bilyalova and Sustainable Cities Research Team")
+st.markdown("**Team:** Amina Bilyalova")
 st.markdown("**Data Sources:** NASA Earth Observation, Open Data APIs")
 st.markdown("**Technologies:** Python, Streamlit, Folium, ML Modeling")

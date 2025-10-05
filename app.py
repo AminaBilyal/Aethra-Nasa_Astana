@@ -119,7 +119,7 @@ axes[0,0].set_title("Average PM2.5 by District", color='white')
 axes[0,0].tick_params(axis='x', rotation=45, colors='white')
 axes[0,0].tick_params(axis='y', colors='white')
 # Green vs PM2.5
-sns.scatterplot(data=df_filtered, x='green_spaces', y='pm25', hue='district', s=100, ax=axes[0,1'])
+sns.scatterplot(data=df_filtered, x='green_spaces', y='pm25', hue='district', s=100, ax=axes[0,1])
 axes[0,1].set_title("Green Spaces vs PM2.5", color='white')
 axes[0,1].tick_params(axis='x', colors='white')
 axes[0,1].tick_params(axis='y', colors='white')

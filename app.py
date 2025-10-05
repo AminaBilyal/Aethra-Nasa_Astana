@@ -36,6 +36,7 @@ st.markdown(
     .main {background-color: #0c0c0c; color: white;}
     .stButton>button {background-color: #1a1a1a; color: white;}
     .stSelectbox>div>div {background-color: #1a1a1a; color: white;}
+    .stSlider>div>div {background-color: #1a1a1a; color: white;}
     </style>
     """,
     unsafe_allow_html=True
@@ -94,25 +95,33 @@ df = create_astana_data()
 
 # --- SIDEBAR FILTERS ---
 st.sidebar.header("Filters")
-selected_month = st.sidebar.slider("Select month:", 1, 12, 1)
+month_names = ["January","February","March","April","May","June","July","August","September","October","November","December"]
+selected_month_index = st.sidebar.slider("Select month:", 1, 12, 1)
+selected_month = month_names[selected_month_index-1]
+
+district_options = ["All"] + list(df['district'].unique())
+selected_district = st.sidebar.selectbox("Select district:", district_options)
+
 selected_pm_levels = st.sidebar.multiselect(
     "Select pollution levels to display:",
     ["Low (<15)", "Moderate (15-25)", "High (>25)"],
     default=["Low (<15)", "Moderate (15-25)", "High (>25)"]
 )
 
-filtered_df = df[df['month']==selected_month]
+filtered_df = df[df['month']==selected_month_index]
+if selected_district != "All":
+    filtered_df = filtered_df[filtered_df['district']==selected_district]
 
 # --- INTERACTIVE MAP ---
-st.subheader(f"Astana Pollution Map: Month {selected_month}")
+st.subheader(f"Astana Pollution Map: {selected_month} {'' if selected_district=='All' else '- '+selected_district}")
 
 m = folium.Map(location=[51.1694, 71.4491], zoom_start=11, tiles="CartoDB dark_matter")
 
-# Add heatmap for all points
+# HeatMap
 heat_data = [[row['latitude'], row['longitude'], row['pm25']] for index,row in filtered_df.iterrows()]
 HeatMap(heat_data, min_opacity=0.5, radius=25, blur=15, max_val=50).add_to(m)
 
-# CircleMarkers by pollution levels
+# CircleMarkers
 for index,row in filtered_df.iterrows():
     if row['pm25']<15 and "Low (<15)" in selected_pm_levels:
         color = "green"
@@ -184,4 +193,4 @@ st.markdown(f"**Cleanest district:** {best} → Study and replicate successful s
 top_parks = df.groupby('district')['park_need_index'].mean().sort_values(ascending=False)
 st.markdown(f"**Immediate Park Development Needed:** {top_parks.index[0]}, {top_parks.index[1]}")
 
-st.success("🚀 Interactive demo ready! All zones and months selectable, ML model and map integrated.")
+st.success("🚀 Interactive demo ready! All zones, months, and districts selectable, ML model and map integrated.")
